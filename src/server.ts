@@ -67,6 +67,7 @@ async function bootstrap() {
   await app.register(cors, {
     origin: [env.frontendOrigin],
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   });
 
   app.get('/health', async (_request, reply) => {
@@ -89,7 +90,7 @@ async function bootstrap() {
     return proxyJson(request, reply, `${env.usersApiUrl}/api/users${queryString(request)}`);
   });
 
-  app.get('/api/users/:userId', { preHandler: requirePermission('user:view') }, async (request, reply) => {
+  app.get('/api/users/:userId', { preHandler: authOnly }, async (request, reply) => {
     const { userId } = request.params as { userId: string };
     return proxyJson(request, reply, `${env.usersApiUrl}/api/users/${userId}`);
   });
@@ -108,13 +109,13 @@ async function bootstrap() {
     return proxyJson(request, reply, `${env.usersApiUrl}/api/users/${userId}`);
   });
 
-  app.get('/api/groups', { preHandler: requirePermission('groups:view') }, async (request, reply) => {
+  app.get('/api/groups', { preHandler: authOnly }, async (request, reply) => {
     return proxyJson(request, reply, `${env.groupsApiUrl}/api/groups${queryString(request)}`);
   });
 
   app.get(
     '/api/groups/:groupId',
-    { preHandler: requirePermission('group:view', request => (request.params as { groupId: string }).groupId) },
+    { preHandler: authOnly },
     async (request, reply) => {
       const { groupId } = request.params as { groupId: string };
       return proxyJson(request, reply, `${env.groupsApiUrl}/api/groups/${groupId}`);
@@ -145,7 +146,7 @@ async function bootstrap() {
 
   app.get(
     '/api/groups/:groupId/members',
-    { preHandler: requirePermission('group:view', request => (request.params as { groupId: string }).groupId) },
+    { preHandler: authOnly },
     async (request, reply) => {
       const { groupId } = request.params as { groupId: string };
       return proxyJson(request, reply, `${env.groupsApiUrl}/api/groups/${groupId}/members`);
@@ -233,6 +234,15 @@ async function bootstrap() {
     async (request, reply) => {
       const { ticketId } = request.params as { ticketId: string };
       return proxyJson(request, reply, `${env.ticketsApiUrl}/api/tickets/${ticketId}/comments`);
+    },
+  );
+
+  app.get(
+    '/api/tickets/:ticketId/history',
+    { preHandler: requirePermission('ticket:view', request => getTicketGroupId((request.params as { ticketId: string }).ticketId)) },
+    async (request, reply) => {
+      const { ticketId } = request.params as { ticketId: string };
+      return proxyJson(request, reply, `${env.ticketsApiUrl}/api/tickets/${ticketId}/history`);
     },
   );
 
